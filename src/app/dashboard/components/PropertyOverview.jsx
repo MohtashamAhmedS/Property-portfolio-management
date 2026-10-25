@@ -29,6 +29,7 @@ function Row({ label, value }) {
 }
 
 export default function PropertyOverview({
+  photoUrl = null,
   image = '/property-placeholder.png',
   status = 'pending',
   bedrooms,
@@ -49,7 +50,7 @@ export default function PropertyOverview({
         style={{ boxShadow: CARD_SHADOW }}
       >
         <Image
-          src={image}
+          src={photoUrl || image}
           alt="Property"
           fill
           sizes="(min-width: 1024px) 60vw, 100vw"
@@ -77,7 +78,7 @@ export default function PropertyOverview({
             <Detail value={bedrooms} label="Bedrooms" />
             <Detail value={bathrooms} label="Bathrooms" />
             <Detail
-              value={`${floorArea.toLocaleString()} sq ft`}
+              value={`${Number(floorArea).toLocaleString()} sq ft`}
               label="Floor area"
             />
             <Detail value={yearBuilt} label="Year built" />
@@ -87,7 +88,7 @@ export default function PropertyOverview({
         <div className="mt-6 border-t border-gray-200 pt-6">
           <p className="flex items-baseline gap-1">
             <span className="text-4xl font-bold text-[#002C83]">
-              ${rent.toLocaleString()}
+              ${Number(rent).toLocaleString()}
             </span>
             <span className="text-xs text-gray-500">/ month</span>
           </p>

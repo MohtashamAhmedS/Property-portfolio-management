@@ -46,7 +46,14 @@ export default function PropertiesCarousel({ properties }) {
             key={property.id}
             className="snap-start shrink-0 w-full sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)]"
           >
-            <PropertyCard address={property.address} date={property.dueDate} />
+            <PropertyCard
+              id={property.id}
+              address={property.address}
+              date={property.dueDate}
+              photoUrl={property.photoUrl}
+              status={property.status}
+              label={property.label}
+            />
           </div>
         ))}
       </div>

@@ -1,10 +1,10 @@
 import Link from 'next/link'
 
 export default function PropertyDetailHeader({
+  id,
   name,
   city,
   type,
-  onEdit,
   onRecordPayment,
 }) {
   return (
@@ -49,12 +49,12 @@ export default function PropertyDetailHeader({
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={onEdit}
+          <Link
+            href={`/dashboard/properties/${id}/edit`}
             className="rounded-lg border border-[#002C83] bg-white px-4 py-2 text-xs font-medium text-[#002C83] transition-colors hover:bg-[#002C83]/5"
           >
             Edit property
-          </button>
+          </Link>
           <button
             onClick={onRecordPayment}
             className="rounded-lg bg-[#002C83] px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90"

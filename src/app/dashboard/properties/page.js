@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createClient } from '../../../lib/supabase/client'
 import DashboardHeader from '../components/DashboardHeader'
 import PropertyFilters from '../components/PropertyFilters'
 import PropertyListingCard from '../components/PropertyListingCard'
@@ -14,60 +16,54 @@ const STATUS_FILTERS = {
   Vacant: 'vacant',
 }
 
-// TEMPORARY demo templates. Each "Add a property" click adds the next one.
-// This will be replaced by the real add-property flow and database data.
-const DEMO_TEMPLATES = [
-  {
-    street: 'AB avenue',
-    city: 'AB city',
-    tenant: 'M. John',
-    rent: 1300,
-    status: 'pending',
-  },
-  {
-    street: 'CD street',
-    city: 'CD city',
-    tenant: 'S. Khan',
-    rent: 1300,
-    status: 'pending',
-  },
-  {
-    street: 'EF road',
-    city: 'EF city',
-    tenant: 'A. Smith',
-    rent: 1300,
-    status: 'paid',
-  },
-  {
-    street: 'GH lane',
-    city: 'GH city',
-    tenant: 'R. Patel',
-    rent: 1300,
-    status: 'paid',
-  },
-  {
-    street: 'IJ boulevard',
-    city: 'IJ city',
-    tenant: null,
-    rent: 1300,
-    status: 'vacant',
-  },
-]
+// Turn a database row into what the listing card expects
+function toCardProperty(row) {
+  const tenant = row.tenants?.[0]?.name ?? null
+
+  // Newest rent record decides the status
+  const latestRent = [...(row.rents ?? [])].sort((a, b) =>
+    b.due_date.localeCompare(a.due_date),
+  )[0]
+
+  let status = 'pending'
+  if (!tenant) status = 'vacant'
+  else if (latestRent?.status === 'paid') status = 'paid'
+
+  return {
+    id: row.id,
+    street: row.street,
+    city: row.city,
+    tenant,
+    rent: Number(row.monthly_rent),
+    status,
+    photoUrl: row.photo_url,
+  }
+}
 
 export default function PropertiesPage() {
+  const router = useRouter()
+  const supabase = createClient()
+
   const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('All')
 
-  const handleAddProperty = () => {
-    setProperties((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        ...DEMO_TEMPLATES[prev.length % DEMO_TEMPLATES.length],
-      },
-    ])
-  }
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*, tenants(name), rents(status, due_date)')
+        .order('created_at', { ascending: false })
+
+      if (error) console.error('Load properties failed:', error.message)
+      setProperties((data ?? []).map(toCardProperty))
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  const handleAddProperty = () => router.push('/dashboard/properties/new')
 
   const hasProperties = properties.length > 0
 
@@ -87,7 +83,7 @@ export default function PropertiesPage() {
     .reduce((sum, p) => sum + p.rent, 0)
 
   const subtitle = hasProperties
-    ? `${properties.length} properties - ${vacantCount} vacant - $${rentPending} pending this month`
+    ? `${properties.length} properties - ${vacantCount} vacant - $${rentPending.toLocaleString()} pending this month`
     : undefined
 
   return (
@@ -98,7 +94,9 @@ export default function PropertiesPage() {
         onAddProperty={handleAddProperty}
       />
 
-      {hasProperties ? (
+      {loading ? (
+        <p className="px-8 pt-6 text-sm text-gray-500">Loading...</p>
+      ) : hasProperties ? (
         <>
           <PropertyFilters
             search={search}

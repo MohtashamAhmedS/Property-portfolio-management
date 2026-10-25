@@ -1,6 +1,48 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { createClient } from '../../lib/supabase/client'
 
 export default function LoginPage() {
+  const router = useRouter()
+  const supabase = createClient()
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleLogin(e) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    router.push('/dashboard')
+    router.refresh()
+  }
+
+  async function handleGoogle() {
+    setError('')
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (error) setError(error.message)
+  }
+
   return (
     <main className="h-screen w-full bg-black p-[20px]">
       <div className="w-full h-full flex flex-col md:flex-row gap-[5px]">
@@ -39,24 +81,37 @@ export default function LoginPage() {
             </div>
 
             {/* Form */}
-            <form className="w-full flex flex-col gap-3 mt-2">
+            <form
+              onSubmit={handleLogin}
+              className="w-full flex flex-col gap-3 mt-2"
+            >
               <input
                 type="email"
                 placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full rounded-full px-5 py-3 text-sm text-black placeholder:text-gray-400 focus:outline-none"
                 style={{ boxShadow: '2px 2px 4px 0px rgba(0, 0, 0, 0.25)' }}
               />
               <input
                 type="password"
                 placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
                 className="w-full rounded-full px-5 py-3 text-sm text-black placeholder:text-gray-400 focus:outline-none"
                 style={{ boxShadow: '2px 2px 4px 0px rgba(0, 0, 0, 0.25)' }}
               />
+
+              {error && <p className="text-xs text-[#C24B4B]">{error}</p>}
+
               <button
                 type="submit"
-                className="w-full rounded-full bg-[#002C83] text-white text-sm font-medium py-3 hover:brightness-110 transition-all"
+                disabled={loading}
+                className="w-full rounded-full bg-[#002C83] text-white text-sm font-medium py-3 hover:brightness-110 transition-all disabled:opacity-60"
               >
-                Continue
+                {loading ? 'Signing in...' : 'Continue'}
               </button>
             </form>
 
@@ -69,6 +124,8 @@ export default function LoginPage() {
 
             {/* Social buttons */}
             <button
+              type="button"
+              onClick={handleGoogle}
               className="w-full rounded-full py-3 flex items-center justify-center gap-2 text-sm text-black hover:bg-gray-50 transition-colors"
               style={{ boxShadow: '2px 2px 4px 0px rgba(0, 0, 0, 0.25)' }}
             >
@@ -94,6 +151,7 @@ export default function LoginPage() {
             </button>
 
             <button
+              type="button"
               className="w-full rounded-full py-3 flex items-center justify-center gap-2 text-sm text-black hover:bg-gray-50 transition-colors"
               style={{ boxShadow: '2px 2px 4px 0px rgba(0, 0, 0, 0.25)' }}
             >

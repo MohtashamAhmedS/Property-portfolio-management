@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '../../../lib/supabase/client'
 
 const navItems = [
   {
@@ -82,11 +83,19 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
   const [collapsed, setCollapsed] = useState(false) // pinned state
   const [hovered, setHovered] = useState(false)
 
   // Open when pinned open, or when collapsed but being hovered
   const isOpen = !collapsed || hovered
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     // Wrapper keeps the layout footprint fixed so content doesn't shift on hover
@@ -188,6 +197,33 @@ export default function Sidebar() {
             )
           })}
         </nav>
+
+        {/* Logout, pinned to the bottom */}
+        <div className="mt-auto pt-4 border-t border-white/15">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={!isOpen ? 'Log out' : undefined}
+            className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-sm whitespace-nowrap text-white/70 hover:text-white hover:bg-white/10 transition-colors ${
+              isOpen ? 'px-3' : 'justify-center px-0'
+            }`}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-5 h-5 shrink-0"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            {isOpen && <span>Log out</span>}
+          </button>
+        </div>
       </aside>
     </div>
   )

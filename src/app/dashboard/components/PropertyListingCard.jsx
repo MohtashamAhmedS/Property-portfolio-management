@@ -12,6 +12,7 @@ export default function PropertyListingCard({
   tenant,
   rent,
   status = 'pending',
+  photoUrl = null,
   image = '/property-placeholder.png',
 }) {
   const { label, color } = STATUS[status]
@@ -22,10 +23,9 @@ export default function PropertyListingCard({
       style={{ boxShadow: '2px 2px 4px 0px rgba(0, 0, 0, 0.25)' }}
     >
       {/* Photo + status pill */}
-      {/* Photo + status pill */}
       <div className="relative aspect-[19/10] overflow-hidden bg-gray-200">
         <Image
-          src={image}
+          src={photoUrl || image}
           alt={`${street}, ${city}`}
           fill
           sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 100vw"

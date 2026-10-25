@@ -1,4 +1,5 @@
 import FormPageHeader from '../../components/FormPageHeader'
+import AddPropertyForm from '../../components/AddPropertyForm'
 
 export default function AddPropertyPage() {
   return (
@@ -10,7 +11,7 @@ export default function AddPropertyPage() {
         subtitle="Enter the details now. You can edit them any time."
       />
 
-      {/* Form goes here */}
+      <AddPropertyForm />
     </div>
   )
 }

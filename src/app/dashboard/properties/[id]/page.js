@@ -1,98 +1,203 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '../../../../lib/supabase/client'
 import PropertyDetailHeader from '../../components/PropertyDetailHeader'
 import PropertyOverview from '../../components/PropertyOverview'
 import TenantRentSection from '../../components/TenantRentSection'
 import PropertyBills from '../../components/PropertyBills'
 
-const PROPERTIES = {
-  1: { name: 'AB avenue', city: 'AB city', type: 'Single-family home' },
-  2: { name: 'CD street', city: 'CD city', type: 'Apartment' },
-  3: { name: 'EF road', city: 'EF city', type: 'Apartment' },
-  4: { name: 'GH lane', city: 'GH city', type: 'Townhouse' },
-  5: { name: 'IJ boulevard', city: 'IJ city', type: 'Studio' },
+// ---------- helpers ----------
+const toDate = (s) => (s ? new Date(`${s}T00:00:00`) : null)
+
+const fmtShort = (s) =>
+  s
+    ? toDate(s).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    : null
+
+const fmtFull = (d) =>
+  d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+
+const fmtMonthYear = (s) =>
+  toDate(s).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '')
+
+function nextDueDate(dueDay) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  let d = new Date(today.getFullYear(), today.getMonth(), dueDay)
+  if (d < today) d = new Date(today.getFullYear(), today.getMonth() + 1, dueDay)
+  return fmtFull(d)
+}
+
+function monthsBetween(a, b) {
+  return (
+    (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth())
+  )
+}
+
+function leaseInfo(tenant) {
+  if (!tenant?.lease_start || !tenant?.lease_end) {
+    return { term: '—', progress: 0, start: '—', end: '—' }
+  }
+  const start = toDate(tenant.lease_start)
+  const end = toDate(tenant.lease_end)
+  const total = end - start
+  const done = Math.min(Math.max(Date.now() - start, 0), total)
+  return {
+    term: `${monthsBetween(start, end)} months`,
+    progress: total > 0 ? Math.round((done / total) * 100) : 0,
+    start: fmtFull(start),
+    end: fmtFull(end),
+  }
 }
 
 export default function PropertyDetailPage() {
   const { id } = useParams()
-  const property = PROPERTIES[id] ?? PROPERTIES[1]
+  const supabase = createClient()
+
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    async function load() {
+      const { data: property } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (!property) {
+        setNotFound(true)
+        setLoading(false)
+        return
+      }
+
+      const [tenantRes, rentsRes, billsRes] = await Promise.all([
+        supabase
+          .from('tenants')
+          .select('*')
+          .eq('property_id', id)
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('rents')
+          .select('*')
+          .eq('property_id', id)
+          .order('due_date', { ascending: false })
+          .limit(6),
+        supabase
+          .from('bills')
+          .select('*')
+          .eq('property_id', id)
+          .order('due_date', { ascending: false }),
+      ])
+
+      setData({
+        property,
+        tenant: tenantRes.data,
+        rents: rentsRes.data ?? [],
+        bills: billsRes.data ?? [],
+      })
+      setLoading(false)
+    }
+    load()
+  }, [id])
+
+  if (loading) {
+    return <p className="p-10 text-sm text-gray-500">Loading...</p>
+  }
+
+  if (notFound) {
+    return (
+      <div className="p-10">
+        <p className="text-sm text-gray-600">Property not found.</p>
+        <Link
+          href="/dashboard/properties"
+          className="mt-3 inline-block text-sm font-medium text-[#002C83]"
+        >
+          Back to properties
+        </Link>
+      </div>
+    )
+  }
+
+  const { property, tenant, rents, bills } = data
+  const lease = leaseInfo(tenant)
+  const lastPaid = rents.find((r) => r.status === 'paid')
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <PropertyDetailHeader
-        name={property.name}
+        id={property.id}
+        name={property.street}
         city={property.city}
         type={property.type}
       />
+
       <PropertyOverview
-        status="pending"
-        bedrooms={3}
-        bathrooms={2}
-        floorArea={1850}
-        yearBuilt={2018}
-        rent={1200}
-        nextDue="06 Nov 2026"
-        lastPayment="$1,200 on 04 Oct"
+        photoUrl={property.photo_url}
+        status={rents[0]?.status ?? 'pending'}
+        bedrooms={property.bedrooms ?? 0}
+        bathrooms={property.bathrooms ?? 0}
+        floorArea={property.floor_area ?? 0}
+        yearBuilt={property.year_built ?? '—'}
+        rent={Number(property.monthly_rent)}
+        nextDue={nextDueDate(property.rent_due_day)}
+        lastPayment={
+          lastPaid
+            ? `$${Number(lastPaid.amount).toLocaleString()} on ${fmtShort(
+                lastPaid.paid_on,
+              )}`
+            : '—'
+        }
       />
+
       <TenantRentSection
         tenant={{
-          name: 'James Carter',
-          since: 'Mar 2025',
-          phone: '+1 555 014 2290',
-          email: 'j.carter@example.com',
-          deposit: 1200,
-          leaseTerm: '12 months',
-          leaseStart: '01 Mar 2026',
-          leaseEnd: '28 Feb 2027',
-          leaseProgress: 72,
+          name: tenant?.name ?? 'No tenant yet',
+          since: tenant?.lease_start
+            ? toDate(tenant.lease_start).toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+              })
+            : '—',
+          phone: tenant?.phone ?? '—',
+          email: tenant?.email ?? '—',
+          deposit: Number(property.deposit ?? 0),
+          leaseTerm: lease.term,
+          leaseStart: lease.start,
+          leaseEnd: lease.end,
+          leaseProgress: lease.progress,
         }}
-        history={[
-          {
-            month: 'November 2026',
-            amount: 1200,
-            paidOn: null,
-            status: 'Pending',
-          },
-          {
-            month: 'October 2026',
-            amount: 1200,
-            paidOn: '04 Oct',
-            status: 'Paid',
-          },
-          {
-            month: 'September 2026',
-            amount: 1200,
-            paidOn: '03 Sep',
-            status: 'Paid',
-          },
-          {
-            month: 'August 2026',
-            amount: 1200,
-            paidOn: '09 Aug',
-            status: 'Paid',
-          },
-        ]}
+        history={rents.map((r) => ({
+          month: fmtMonthYear(r.due_date),
+          amount: Number(r.amount),
+          paidOn: r.paid_on ? fmtShort(r.paid_on) : null,
+          status: cap(r.status),
+        }))}
       />
+
       <PropertyBills
-        bills={[
-          {
-            id: 1,
-            name: 'Water',
-            note: 'Due 24 Oct',
-            icon: 'water',
-            amount: 65,
-            status: 'Upcoming',
-          },
-          {
-            id: 2,
-            name: 'Insurance',
-            note: 'Paid 02 Oct',
-            icon: 'shield',
-            amount: 300,
-            status: 'Paid',
-          },
-        ]}
+        bills={bills.map((b) => ({
+          id: b.id,
+          name: b.title,
+          note:
+            b.status === 'paid'
+              ? `Paid ${fmtShort(b.paid_on)}`
+              : `Due ${fmtShort(b.due_date)}`,
+          icon: /insur/i.test(b.title) ? 'shield' : 'water',
+          amount: Number(b.amount),
+          status: cap(b.status),
+        }))}
       />
     </div>
   )

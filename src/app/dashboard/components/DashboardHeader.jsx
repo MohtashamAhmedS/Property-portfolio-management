@@ -1,6 +1,7 @@
 'use client'
 
-import Image from 'next/image'
+import { useEffect, useState } from 'react'
+import { createClient } from '../../../lib/supabase/client'
 
 export default function DashboardHeader({
   title,
@@ -8,6 +9,18 @@ export default function DashboardHeader({
   onAddProperty,
   buttonLabel = 'Add a property',
 }) {
+  const [initial, setInitial] = useState('')
+
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => {
+        const meta = user?.user_metadata ?? {}
+        const name = meta.full_name || meta.name || user?.email || ''
+        setInitial(name.charAt(0).toUpperCase())
+      })
+  }, [])
+
   return (
     <div className="flex items-center justify-between gap-4 px-8 py-6 border-b border-gray-100">
       <div className="min-w-0">
@@ -26,14 +39,11 @@ export default function DashboardHeader({
           {buttonLabel}
         </button>
 
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 relative shrink-0">
-          <Image
-            src="/avatar-placeholder.png"
-            alt="User avatar"
-            fill
-            sizes="40px"
-            className="object-cover"
-          />
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E8B98F] text-sm font-medium text-[#5a3a1c]"
+          style={{ boxShadow: '2px 2px 4px rgba(0,0,0,0.25)' }}
+        >
+          {initial}
         </div>
       </div>
     </div>

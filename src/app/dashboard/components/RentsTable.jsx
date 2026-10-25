@@ -2,49 +2,6 @@
 
 import { useState } from 'react'
 
-const RENTS = [
-  {
-    id: 1,
-    property: 'AB Avenue',
-    tenant: 'J. Carter',
-    amount: 1200,
-    due: '06 Aug',
-    status: 'Pending',
-  },
-  {
-    id: 2,
-    property: 'CD Avenue',
-    tenant: 'R. Nolan',
-    amount: 1450,
-    due: '01 Aug',
-    status: 'Paid',
-  },
-  {
-    id: 3,
-    property: 'GH Avenue',
-    tenant: 'S. Malik',
-    amount: 1300,
-    due: '03 Aug',
-    status: 'Paid',
-  },
-  {
-    id: 4,
-    property: 'IJ Avenue',
-    tenant: 'D. Osei',
-    amount: 1250,
-    due: '10 Aug',
-    status: 'Pending',
-  },
-  {
-    id: 5,
-    property: 'KL Avenue',
-    tenant: 'T. Rowe',
-    amount: 900,
-    due: '28 Jul',
-    status: 'Overdue',
-  },
-]
-
 const FILTERS = ['All', 'Pending', 'Paid', 'Overdue']
 
 const STATUS_STYLES = {
@@ -56,11 +13,15 @@ const STATUS_STYLES = {
 const DUAL_SHADOW =
   '-2px -2px 4px 0px rgba(0, 0, 0, 0.25), 2px 2px 4px 0px rgba(0, 0, 0, 0.25)'
 
-export default function RentsTable() {
+export default function RentsTable({
+  rents = [],
+  loading = false,
+  onMarkPaid,
+}) {
   const [filter, setFilter] = useState('All')
 
   const rows =
-    filter === 'All' ? RENTS : RENTS.filter((r) => r.status === filter)
+    filter === 'All' ? rents : rents.filter((r) => r.status === filter)
 
   return (
     <div className="px-8 pt-6 pb-8">
@@ -125,16 +86,33 @@ export default function RentsTable() {
                 </span>
               </span>
 
-              <button className="text-right text-xs font-bold text-[#002C83] hover:underline">
-                {r.status === 'Paid' ? 'View receipt' : 'Send reminder'}
-              </button>
+              {r.status === 'Paid' ? (
+                <span className="text-right text-xs text-gray-500">
+                  {r.paidOn ? `Paid ${r.paidOn}` : 'Paid'}
+                </span>
+              ) : (
+                <button
+                  onClick={() => onMarkPaid?.(r.id)}
+                  className="text-right text-xs font-bold text-[#002C83] hover:underline"
+                >
+                  Mark as paid
+                </button>
+              )}
             </div>
           ))}
 
-          {rows.length === 0 && (
+          {loading ? (
             <div className="border-t border-gray-200 px-4 py-8 text-center text-sm text-gray-400">
-              No rents found.
+              Loading...
             </div>
+          ) : (
+            rows.length === 0 && (
+              <div className="border-t border-gray-200 px-4 py-8 text-center text-sm text-gray-400">
+                {rents.length === 0
+                  ? 'No rents yet. Click "Add rent" to create one.'
+                  : 'No rents found.'}
+              </div>
+            )
           )}
         </div>
       </div>
