@@ -2,75 +2,6 @@
 
 import { useState } from 'react'
 
-const BILLS = [
-  {
-    id: 1,
-    name: 'Electricity',
-    note: 'Monthly utility',
-    icon: 'bolt',
-    place: 'CD Avenue, CD City',
-    due: '21 Oct',
-    rel: 'Due tomorrow',
-    amount: 180,
-    status: 'Overdue',
-  },
-  {
-    id: 2,
-    name: 'Water',
-    note: 'Monthly utility',
-    icon: 'water',
-    place: 'AB Avenue, AB City',
-    due: '24 Oct',
-    rel: 'In 4 days',
-    amount: 65,
-    status: 'Upcoming',
-  },
-  {
-    id: 3,
-    name: 'Internet',
-    note: 'Fiber 200 Mbps',
-    icon: 'wifi',
-    place: 'GH Avenue, GH City',
-    due: '28 Oct',
-    rel: 'In 8 days',
-    amount: 55,
-    status: 'Upcoming',
-  },
-  {
-    id: 4,
-    name: 'Property tax',
-    note: 'Quarterly',
-    icon: 'home',
-    place: 'IJ Avenue, IJ City',
-    due: '31 Oct',
-    rel: 'In 11 days',
-    amount: 520,
-    status: 'Upcoming',
-  },
-  {
-    id: 5,
-    name: 'Insurance',
-    note: 'Building cover',
-    icon: 'shield',
-    place: 'AB Avenue, AB City',
-    due: '03 Oct',
-    rel: 'Paid 02 Oct',
-    amount: 300,
-    status: 'Paid',
-  },
-  {
-    id: 6,
-    name: 'Maintenance',
-    note: 'Plumbing repair',
-    icon: 'wrench',
-    place: 'CD Avenue, CD City',
-    due: '09 Oct',
-    rel: 'Paid 08 Oct',
-    amount: 120,
-    status: 'Paid',
-  },
-]
-
 const FILTERS = ['All', 'Pending', 'Paid', 'Overdue']
 
 const STATUS_STYLES = {
@@ -119,16 +50,17 @@ function BillIcon({ name }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {ICONS[name]}
+        {ICONS[name] ?? ICONS.home}
       </svg>
     </div>
   )
 }
 
-function ActionButton({ status }) {
+function ActionButton({ status, onClick }) {
   if (status === 'Overdue') {
     return (
       <button
+        onClick={onClick}
         className="rounded-lg bg-[#002C83] px-4 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90"
         style={{ boxShadow: '2px 2px 4px rgba(0,0,0,0.25)' }}
       >
@@ -138,22 +70,21 @@ function ActionButton({ status }) {
   }
   if (status === 'Upcoming') {
     return (
-      <button className="rounded-lg border border-[#002C83] bg-white px-4 py-1.5 text-xs font-medium text-[#002C83] transition-colors hover:bg-[#002C83]/5">
+      <button
+        onClick={onClick}
+        className="rounded-lg border border-[#002C83] bg-white px-4 py-1.5 text-xs font-medium text-[#002C83] transition-colors hover:bg-[#002C83]/5"
+      >
         Pay now
       </button>
     )
   }
-  return (
-    <button className="rounded-lg border border-gray-300 bg-white px-4 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50">
-      Receipt
-    </button>
-  )
+  return null
 }
 
-export default function BillsList() {
+export default function BillsList({ bills = [], loading = false, onMarkPaid }) {
   const [filter, setFilter] = useState('All')
 
-  const rows = BILLS.filter((b) => {
+  const rows = bills.filter((b) => {
     if (filter === 'All') return true
     if (filter === 'Pending') return b.status === 'Upcoming'
     return b.status === filter
@@ -196,7 +127,9 @@ export default function BillsList() {
                   <span className="text-xs font-bold text-[#002C83]">
                     {b.name}
                   </span>
-                  <span className="text-[11px] text-gray-500">{b.note}</span>
+                  {b.note && (
+                    <span className="text-[11px] text-gray-500">{b.note}</span>
+                  )}
                 </div>
               </div>
 
@@ -207,7 +140,9 @@ export default function BillsList() {
                 <span className="text-[11px] text-gray-400">{b.rel}</span>
               </div>
 
-              <span className="text-xs font-bold text-black">${b.amount}</span>
+              <span className="text-xs font-bold text-black">
+                ${b.amount.toLocaleString()}
+              </span>
 
               <div className="flex items-center justify-end gap-3">
                 <span
@@ -216,15 +151,26 @@ export default function BillsList() {
                   <span className="h-1.5 w-1.5 rounded-full bg-current" />
                   {b.status}
                 </span>
-                <ActionButton status={b.status} />
+                <ActionButton
+                  status={b.status}
+                  onClick={() => onMarkPaid?.(b.id)}
+                />
               </div>
             </div>
           ))}
 
-          {rows.length === 0 && (
+          {loading ? (
             <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">
-              No bills found.
+              Loading...
             </div>
+          ) : (
+            rows.length === 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">
+                {bills.length === 0
+                  ? 'No bills yet. Click "Add bill" to create one.'
+                  : 'No bills found.'}
+              </div>
+            )
           )}
         </div>
       </div>
